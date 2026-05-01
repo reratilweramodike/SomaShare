@@ -1,0 +1,20 @@
+@page "/dashboard"
+@inject SomaShareApp.Data.ApplicationDbContext db
+
+<h3>My Dashboard</h3>
+
+<h4>My Listings</h4>
+<ul>
+    @foreach (var book in db.Textbooks)
+    {
+        <li>@book.Book_Name - R@book.Price</li>
+    }
+</ul>
+
+<h4>Offers (Placeholder)</h4>
+<p>No offers yet</p>
+
+<h4>Purchases (Placeholder)</h4>
+<p>No purchases yet</p>
+
+<p>Trust Score: ★★★★★</p>

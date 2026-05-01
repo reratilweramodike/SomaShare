@@ -1,0 +1,100 @@
+@page "/mylistings"
+@using SomaShareApp.Models
+@inject SomaShareApp.Data.ApplicationDbContext db
+
+<h3>My Listings</h3>
+
+<!-- SEARCH -->
+<input @bind="searchTerm" placeholder="Search..." />
+<button @onclick="Search">Search</button>
+
+<br /><br />
+
+<!-- FORM WITH VALIDATION -->
+<EditForm Model="newBook" OnValidSubmit="AddBook">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <input @bind="newBook.Book_Name" placeholder="Book Name" />
+        <ValidationMessage For="@(() => newBook.Book_Name)" />
+    </div>
+
+    <div>
+        <input @bind="newBook.Author" placeholder="Author" />
+        <ValidationMessage For="@(() => newBook.Author)" />
+    </div>
+
+    <div>
+        <input @bind="newBook.Publisher_Name" placeholder="Publisher" />
+        <ValidationMessage For="@(() => newBook.Publisher_Name)" />
+    </div>
+
+    <div>
+        <input @bind="newBook.Subject" placeholder="Subject" />
+        <ValidationMessage For="@(() => newBook.Subject)" />
+    </div>
+
+    <div>
+        <input type="number" @bind="newBook.Price" placeholder="Price" />
+        <ValidationMessage For="@(() => newBook.Price)" />
+    </div>
+
+    <button type="submit">Add Book</button>
+</EditForm>
+
+<br />
+
+
+<ul>
+    @foreach (var book in books)
+    {
+        <li>
+            @book.Book_Name - @book.Author - R@book.Price
+
+            <button @onclick="() => EditBook(book)">Edit</button>
+            <button @onclick="() => DeleteBook(book.Book_ID)">Delete</button>
+        </li>
+    }
+</ul>
+
+@code {
+    List<Textbook> books = new();
+    Textbook newBook = new Textbook();
+    string searchTerm = "";
+
+    protected override void OnInitialized()
+    {
+        books = db.Textbooks.ToList();
+    }
+
+    void AddBook()
+    {
+        db.Textbooks.Add(newBook);
+        db.SaveChanges();
+        books = db.Textbooks.ToList();
+        newBook = new Textbook();
+    }
+
+    void DeleteBook(int id)
+    {
+        var book = db.Textbooks.Find(id);
+        if (book != null)
+        {
+            db.Textbooks.Remove(book);
+            db.SaveChanges();
+            books = db.Textbooks.ToList();
+        }
+    }
+
+    void EditBook(Textbook book)
+{
+    newBook = book;
+}
+    void Search()
+    {
+        books = db.Textbooks
+            .Where(b => b.Book_Name.Contains(searchTerm) || b.Author.Contains(searchTerm))
+            .ToList();
+    }
+}
