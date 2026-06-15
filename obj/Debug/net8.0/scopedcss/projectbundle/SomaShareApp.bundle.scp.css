@@ -1,4 +1,4 @@
-/* _content/SomaShareApp/Components/Layout/MainLayout.razor.rz.scp.css */
+/* /Components/Layout/MainLayout.razor.rz.scp.css */
 .page[b-1p6xxq5j0f] {
     position: relative;
     display: flex;
@@ -97,7 +97,7 @@ main[b-1p6xxq5j0f] {
         right: 0.75rem;
         top: 0.5rem;
     }
-/* _content/SomaShareApp/Components/Layout/NavMenu.razor.rz.scp.css */
+/* /Components/Layout/NavMenu.razor.rz.scp.css */
 .navbar-toggler[b-4yiav9ddqo] {
     appearance: none;
     cursor: pointer;
@@ -203,7 +203,7 @@ main[b-1p6xxq5j0f] {
         overflow-y: auto;
     }
 }
-/* _content/SomaShareApp/Components/Layout/ReconnectModal.razor.rz.scp.css */
+/* /Components/Layout/ReconnectModal.razor.rz.scp.css */
 .components-reconnect-first-attempt-visible[b-fxhvsj1xin],
 .components-reconnect-repeated-attempt-visible[b-fxhvsj1xin],
 .components-reconnect-failed-visible[b-fxhvsj1xin],

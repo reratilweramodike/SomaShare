@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "x0T9C5fhHa0=",
+  "dgSpecHash": "QUMcPchYyzg=",
   "success": true,
-  "projectFilePath": "/Users/ratiramodike/Desktop/WEBB CLUTCH/SomaShare/SomaShareApp/SomaShareApp.csproj",
+  "projectFilePath": "/Users/ratiramodike/Desktop/Mphalle_Ramodike_WEBB262_SS2/SomaShare/SomaShareApp/SomaShareApp.csproj",
   "expectedPackageFiles": [
     "/Users/ratiramodike/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
     "/Users/ratiramodike/.nuget/packages/microsoft.aspnetcore.cryptography.internal/8.0.0/microsoft.aspnetcore.cryptography.internal.8.0.0.nupkg.sha512",
@@ -58,7 +58,10 @@
     "/Users/ratiramodike/.nuget/packages/system.text.encoding.codepages/6.0.0/system.text.encoding.codepages.6.0.0.nupkg.sha512",
     "/Users/ratiramodike/.nuget/packages/system.text.encodings.web/8.0.0/system.text.encodings.web.8.0.0.nupkg.sha512",
     "/Users/ratiramodike/.nuget/packages/system.text.json/8.0.0/system.text.json.8.0.0.nupkg.sha512",
-    "/Users/ratiramodike/.nuget/packages/system.threading.channels/6.0.0/system.threading.channels.6.0.0.nupkg.sha512"
+    "/Users/ratiramodike/.nuget/packages/system.threading.channels/6.0.0/system.threading.channels.6.0.0.nupkg.sha512",
+    "/Users/ratiramodike/.nuget/packages/microsoft.netcore.app.ref/8.0.28/microsoft.netcore.app.ref.8.0.28.nupkg.sha512",
+    "/Users/ratiramodike/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.28/microsoft.aspnetcore.app.ref.8.0.28.nupkg.sha512",
+    "/Users/ratiramodike/.nuget/packages/microsoft.netcore.app.host.osx-arm64/8.0.28/microsoft.netcore.app.host.osx-arm64.8.0.28.nupkg.sha512"
   ],
   "logs": []
 }

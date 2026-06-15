@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SomaShareApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ac725bf7ffba581e1812418946388e308006849c")]
 [assembly: System.Reflection.AssemblyProductAttribute("SomaShareApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SomaShareApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
