@@ -10,13 +10,18 @@ namespace SomaShareApp.Models
 
         public Textbook? Textbook { get; set; }
 
-        public string? BuyerId { get; set; }
+        public string BuyerId { get; set; } = string.Empty;
 
         public ApplicationUser? Buyer { get; set; }
 
-        [Required]
+        [Range(1, 10000, ErrorMessage = "Offer must be between R1 and R10 000")]
         public decimal OfferPrice { get; set; }
 
+        [StringLength(300)]
+        public string Message { get; set; } = string.Empty;
+
         public string Status { get; set; } = "Pending";
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 }

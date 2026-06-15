@@ -1,100 +1,392 @@
 @page "/mylistings"
+@attribute [Authorize]
+@using Microsoft.EntityFrameworkCore
 @using SomaShareApp.Models
 @inject SomaShareApp.Data.ApplicationDbContext db
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
 
-<h3>My Listings</h3>
+<PageTitle>My Listings</PageTitle>
 
-<!-- SEARCH -->
-<input @bind="searchTerm" placeholder="Search..." />
-<button @onclick="Search">Search</button>
+<h1>My Textbook Listings</h1>
 
-<br /><br />
-
-<!-- FORM WITH VALIDATION -->
-<EditForm Model="newBook" FormName="book-listing-form" OnValidSubmit="AddBook">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-
-    <div>
-        <input @bind="newBook.Book_Name" placeholder="Book Name" />
-        <ValidationMessage For="@(() => newBook.Book_Name)" />
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">
+        @successMessage
     </div>
+}
 
-    <div>
-        <input @bind="newBook.Author" placeholder="Author" />
-        <ValidationMessage For="@(() => newBook.Author)" />
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
     </div>
+}
 
-    <div>
-        <input @bind="newBook.Publisher_Name" placeholder="Publisher" />
-        <ValidationMessage For="@(() => newBook.Publisher_Name)" />
+<div class="card mb-4">
+    <div class="card-body">
+        <h2 class="h4">Add or edit a textbook</h2>
+
+        <EditForm Model="bookForm" FormName="book-listing-form"
+                  OnValidSubmit="SaveBook">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label">Book name</label>
+                <InputText class="form-control"
+                           @bind-Value="bookForm.Book_Name" />
+                <ValidationMessage For="@(() => bookForm.Book_Name)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Author</label>
+                <InputText class="form-control"
+                           @bind-Value="bookForm.Author" />
+                <ValidationMessage For="@(() => bookForm.Author)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Publisher</label>
+                <InputText class="form-control"
+                           @bind-Value="bookForm.Publisher_Name" />
+                <ValidationMessage For="@(() => bookForm.Publisher_Name)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Subject</label>
+                <InputText class="form-control"
+                           @bind-Value="bookForm.Subject" />
+                <ValidationMessage For="@(() => bookForm.Subject)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">ISBN</label>
+                <InputText class="form-control"
+                           @bind-Value="bookForm.Isbn" />
+                <ValidationMessage For="@(() => bookForm.Isbn)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Course code</label>
+                <InputText class="form-control"
+                           @bind-Value="bookForm.CourseCode" />
+                <ValidationMessage For="@(() => bookForm.CourseCode)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Price in rand</label>
+                <InputNumber class="form-control"
+                             @bind-Value="bookForm.Price" />
+                <ValidationMessage For="@(() => bookForm.Price)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Condition</label>
+                <InputSelect class="form-select"
+                             @bind-Value="bookForm.Condition">
+                    <option value="">Select condition</option>
+                    <option value="New">New</option>
+                    <option value="Excellent">Excellent</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Worn">Worn</option>
+                </InputSelect>
+                <ValidationMessage For="@(() => bookForm.Condition)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Campus</label>
+                <InputText class="form-control"
+                           @bind-Value="bookForm.Campus" />
+                <ValidationMessage For="@(() => bookForm.Campus)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Image URL</label>
+                <InputText class="form-control"
+                           @bind-Value="bookForm.ImageUrl" />
+            </div>
+
+            <button class="btn btn-primary" type="submit">
+                @(editingBookId == 0 ? "Add textbook" : "Save changes")
+            </button>
+
+            @if (editingBookId != 0)
+            {
+                <button class="btn btn-secondary ms-2"
+                        type="button"
+                        @onclick="CancelEdit">
+                    Cancel
+                </button>
+            }
+        </EditForm>
     </div>
+</div>
 
-    <div>
-        <input @bind="newBook.Subject" placeholder="Subject" />
-        <ValidationMessage For="@(() => newBook.Subject)" />
+<div class="mb-4">
+    <label class="form-label">Search my listings</label>
+
+    <div class="input-group">
+        <input class="form-control"
+               @bind="searchTerm"
+               placeholder="Search by title, author, ISBN or course code" />
+
+        <button class="btn btn-outline-primary"
+                @onclick="SearchBooks">
+            Search
+        </button>
+
+        <button class="btn btn-outline-secondary"
+                @onclick="ClearSearch">
+            Clear
+        </button>
     </div>
+</div>
 
-    <div>
-        <input type="number" @bind="newBook.Price" placeholder="Price" />
-        <ValidationMessage For="@(() => newBook.Price)" />
+@if (books.Count == 0)
+{
+    <div class="alert alert-info">
+        No textbook listings were found.
     </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var book in books)
+        {
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                    @if (!string.IsNullOrEmpty(book.ImageUrl))
+                    {
+                        <img src="@book.ImageUrl"
+                             class="card-img-top"
+                             alt="@book.Book_Name" />
+                    }
 
-    <button type="submit">Add Book</button>
-</EditForm>
+                    <div class="card-body">
+                        <h2 class="h5">@book.Book_Name</h2>
 
-<br />
+                        <p class="mb-1">
+                            <strong>Author:</strong> @book.Author
+                        </p>
 
+                        <p class="mb-1">
+                            <strong>Course:</strong> @book.CourseCode
+                        </p>
 
-<ul>
-    @foreach (var book in books)
-    {
-        <li>
-            @book.Book_Name - @book.Author - R@book.Price
+                        <p class="mb-1">
+                            <strong>Condition:</strong> @book.Condition
+                        </p>
 
-            <button @onclick="() => EditBook(book)">Edit</button>
-            <button @onclick="() => DeleteBook(book.Book_ID)">Delete</button>
-        </li>
-    }
-</ul>
+                        <p class="mb-1">
+                            <strong>Campus:</strong> @book.Campus
+                        </p>
+
+                        <p class="fs-5 fw-bold text-success">
+                            R @book.Price.ToString("0.00")
+                        </p>
+
+                        <button class="btn btn-outline-primary"
+                                @onclick="() => StartEdit(book)">
+                            Edit
+                        </button>
+
+                        <button class="btn btn-outline-danger"
+                                @onclick="() => DeleteBook(book.Book_ID)">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
 
 @code {
-    List<Textbook> books = new();
-    Textbook newBook = new Textbook();
-    string searchTerm = "";
+    private string currentUserId = "";
+    private List<Textbook> books = new();
+    private Textbook bookForm = new();
+    private string searchTerm = "";
+    private string successMessage = "";
+    private string errorMessage = "";
+    private int editingBookId = 0;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
+{
+    var authenticationState =
+        await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+    var currentUser =
+        await UserManager.GetUserAsync(authenticationState.User);
+
+    if (currentUser == null)
     {
-        books = db.Textbooks.ToList();
+        errorMessage = "You must log in to manage listings.";
+        return;
     }
 
-    void AddBook()
-    {
-        db.Textbooks.Add(newBook);
-        db.SaveChanges();
-        books = db.Textbooks.ToList();
-        newBook = new Textbook();
-    }
+    currentUserId = currentUser.Id;
 
-    void DeleteBook(int id)
+    await LoadBooks();
+}
+
+private async Task LoadBooks()
+{
+    books = await db.Textbooks
+        .Where(book => book.SellerId == currentUserId)
+        .OrderByDescending(book => book.CreatedAt)
+        .ToListAsync();
+}
+
+    private async Task SaveBook()
     {
-        var book = db.Textbooks.Find(id);
-        if (book != null)
+        successMessage = "";
+        errorMessage = "";
+
+        try
         {
-            db.Textbooks.Remove(book);
-            db.SaveChanges();
-            books = db.Textbooks.ToList();
+            if (editingBookId == 0)
+            {
+                bookForm.CreatedAt = DateTime.Now;
+                bookForm.Status = "Available";
+                bookForm.SellerId = currentUserId;
+
+                db.Textbooks.Add(bookForm);
+
+                successMessage = "The textbook was added successfully.";
+            }
+            else
+            {
+                var existingBook = await db.Textbooks.FindAsync(editingBookId);
+
+                if (existingBook == null)
+                {
+                    errorMessage = "The textbook could not be found.";
+                    return;
+                }
+                if (existingBook.SellerId != currentUserId)
+                {
+                    errorMessage = "You cannot edit another user's textbook.";
+                    return;
+                }
+
+                existingBook.Book_Name = bookForm.Book_Name;
+                existingBook.Author = bookForm.Author;
+                existingBook.Publisher_Name = bookForm.Publisher_Name;
+                existingBook.Subject = bookForm.Subject;
+                existingBook.Isbn = bookForm.Isbn;
+                existingBook.CourseCode = bookForm.CourseCode;
+                existingBook.Price = bookForm.Price;
+                existingBook.Condition = bookForm.Condition;
+                existingBook.Campus = bookForm.Campus;
+                existingBook.ImageUrl = bookForm.ImageUrl;
+
+                successMessage = "The textbook was updated successfully.";
+            }
+
+            await db.SaveChangesAsync();
+            await LoadBooks();
+
+            bookForm = new Textbook();
+            editingBookId = 0;
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.InnerException?.Message
+                ?? exception.Message;
         }
     }
 
-    void EditBook(Textbook book)
-{
-    newBook = book;
-}
-    void Search()
+    private void StartEdit(Textbook book)
     {
-        books = db.Textbooks
-            .Where(b => b.Book_Name.Contains(searchTerm) || b.Author.Contains(searchTerm))
-            .ToList();
+        editingBookId = book.Book_ID;
+
+        bookForm = new Textbook
+        {
+            Book_Name = book.Book_Name,
+            Author = book.Author,
+            Publisher_Name = book.Publisher_Name,
+            Subject = book.Subject,
+            Isbn = book.Isbn,
+            CourseCode = book.CourseCode,
+            Price = book.Price,
+            Condition = book.Condition,
+            Campus = book.Campus,
+            ImageUrl = book.ImageUrl
+        };
+
+        successMessage = "";
+        errorMessage = "";
+    }
+
+    private void CancelEdit()
+    {
+        editingBookId = 0;
+        bookForm = new Textbook();
+        successMessage = "";
+        errorMessage = "";
+    }
+
+    private async Task DeleteBook(int bookId)
+    {
+        successMessage = "";
+        errorMessage = "";
+
+        try
+        {
+            var book = await db.Textbooks.FindAsync(bookId);
+
+            if (book == null)
+            {
+                errorMessage = "The textbook could not be found.";
+                return;
+            }
+            if (book.SellerId != currentUserId)
+                {
+                    errorMessage = "You cannot delete another user's textbook.";
+                    return;
+                }
+
+            db.Textbooks.Remove(book);
+            await db.SaveChangesAsync();
+            await LoadBooks();
+
+            successMessage = "The textbook was deleted.";
+        }
+        catch
+        {
+            errorMessage = "The textbook could not be deleted.";
+        }
+    }
+
+    private async Task SearchBooks()
+{
+    if (string.IsNullOrWhiteSpace(searchTerm))
+    {
+        await LoadBooks();
+        return;
+    }
+
+    string search = searchTerm.Trim().ToLower();
+
+    books = await db.Textbooks
+        .Where(book =>
+            book.SellerId == currentUserId &&
+            (
+                book.Book_Name.ToLower().Contains(search) ||
+                book.Author.ToLower().Contains(search) ||
+                book.Isbn.ToLower().Contains(search) ||
+                book.CourseCode.ToLower().Contains(search)
+            ))
+        .OrderBy(book => book.Book_Name)
+        .ToListAsync();
+}
+
+    private async Task ClearSearch()
+    {
+        searchTerm = "";
+        await LoadBooks();
     }
 }

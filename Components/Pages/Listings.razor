@@ -1,0 +1,258 @@
+@page "/listings"
+@using Microsoft.EntityFrameworkCore
+@using SomaShareApp.Models
+@inject SomaShareApp.Data.ApplicationDbContext db
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Browse Textbooks</PageTitle>
+
+<h1>Browse Textbooks</h1>
+
+<p>Find affordable textbooks from students across campus.</p>
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">@successMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <label class="form-label">Search textbooks</label>
+
+        <input class="form-control"
+               @bind="searchTerm"
+               placeholder="Search by title, author, ISBN or course code" />
+    </div>
+
+    <div class="col-md-4 d-flex align-items-end">
+        <button class="btn btn-primary me-2" @onclick="SearchBooks">
+            Search
+        </button>
+
+        <button class="btn btn-secondary" @onclick="ClearSearch">
+            Clear
+        </button>
+    </div>
+</div>
+
+@if (selectedBook != null)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h4">Make an offer</h2>
+
+            <p>
+                You are making an offer for
+                <strong>@selectedBook.Book_Name</strong>.
+            </p>
+
+            <EditForm Model="offerForm"
+                      FormName="offer-form"
+                      OnValidSubmit="SubmitOffer">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label class="form-label">Offer amount</label>
+
+                    <InputNumber class="form-control"
+                                 @bind-Value="offerForm.OfferPrice" />
+
+                    <ValidationMessage For="@(() => offerForm.OfferPrice)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Message to seller</label>
+
+                    <InputTextArea class="form-control"
+                                   @bind-Value="offerForm.Message" />
+                </div>
+
+                <button class="btn btn-success" type="submit">
+                    Submit offer
+                </button>
+
+                <button class="btn btn-secondary ms-2"
+                        type="button"
+                        @onclick="CancelOffer">
+                    Cancel
+                </button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@if (isLoading)
+{
+    <p>Loading textbooks...</p>
+}
+else if (books.Count == 0)
+{
+    <div class="alert alert-info">
+        No available textbooks were found.
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var book in books)
+        {
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    @if (!string.IsNullOrEmpty(book.ImageUrl))
+                    {
+                        <img src="@book.ImageUrl"
+                             class="card-img-top"
+                             alt="@book.Book_Name" />
+                    }
+
+                    <div class="card-body">
+                        <h2 class="h5">@book.Book_Name</h2>
+
+                        <p><strong>Author:</strong> @book.Author</p>
+                        <p><strong>ISBN:</strong> @book.Isbn</p>
+                        <p><strong>Course:</strong> @book.CourseCode</p>
+                        <p><strong>Condition:</strong> @book.Condition</p>
+                        <p><strong>Campus:</strong> @book.Campus</p>
+
+                        <p class="fs-5 fw-bold text-success">
+                            R @book.Price.ToString("0.00")
+                        </p>
+
+                        <button class="btn btn-outline-success"
+                                @onclick="() => StartOffer(book)">
+                            Make Offer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Textbook> books = new();
+    private Textbook? selectedBook;
+    private Offer offerForm = new();
+    private string searchTerm = "";
+    private string successMessage = "";
+    private string errorMessage = "";
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBooks();
+        isLoading = false;
+    }
+
+    private async Task LoadBooks()
+    {
+        books = await db.Textbooks
+            .Where(book => book.Status == "Available")
+            .OrderByDescending(book => book.CreatedAt)
+            .ToListAsync();
+    }
+
+    private async Task StartOffer(Textbook book)
+    {
+        successMessage = "";
+        errorMessage = "";
+
+        var authenticationState =
+            await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var currentUser =
+            await UserManager.GetUserAsync(authenticationState.User);
+
+        if (currentUser == null)
+        {
+            errorMessage = "Please log in before making an offer.";
+            return;
+        }
+
+        if (book.SellerId == currentUser.Id)
+        {
+            errorMessage = "You cannot make an offer on your own textbook.";
+            return;
+        }
+
+        selectedBook = book;
+
+        offerForm = new Offer
+        {
+            TextbookId = book.Book_ID,
+            BuyerId = currentUser.Id,
+            OfferPrice = book.Price
+        };
+    }
+
+    private async Task SubmitOffer()
+    {
+        if (selectedBook == null)
+        {
+            errorMessage = "Please select a textbook.";
+            return;
+        }
+
+        try
+        {
+            offerForm.TextbookId = selectedBook.Book_ID;
+            offerForm.Status = "Pending";
+            offerForm.CreatedAt = DateTime.Now;
+
+            db.Offers.Add(offerForm);
+            await db.SaveChangesAsync();
+
+            successMessage = "Your offer was submitted successfully.";
+            errorMessage = "";
+            selectedBook = null;
+            offerForm = new Offer();
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.InnerException?.Message
+                ?? exception.Message;
+        }
+    }
+
+    private void CancelOffer()
+    {
+        selectedBook = null;
+        offerForm = new Offer();
+    }
+
+    private async Task SearchBooks()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            await LoadBooks();
+            return;
+        }
+
+        string search = searchTerm.Trim().ToLower();
+
+        books = await db.Textbooks
+            .Where(book =>
+                book.Status == "Available" &&
+                (
+                    book.Book_Name.ToLower().Contains(search) ||
+                    book.Author.ToLower().Contains(search) ||
+                    book.Isbn.ToLower().Contains(search) ||
+                    book.CourseCode.ToLower().Contains(search)
+                ))
+            .OrderBy(book => book.Book_Name)
+            .ToListAsync();
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = "";
+        await LoadBooks();
+    }
+}

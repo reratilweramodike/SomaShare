@@ -1,6 +1,283 @@
 @page "/offers"
+@attribute [Authorize]
+@using Microsoft.EntityFrameworkCore
+@using SomaShareApp.Models
+@inject SomaShareApp.Data.ApplicationDbContext db
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
 
-<h3>Offers</h3>
+<PageTitle>Offers</PageTitle>
 
-<p>This page represents the offer system.</p>
-<p>Users can make, accept, and reject offers.</p>
+<h1>Offers</h1>
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">
+        @successMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
+}
+
+<h2 class="h4 mt-4">Offers I Received</h2>
+
+@if (receivedOffers.Count == 0)
+{
+    <div class="alert alert-info">
+        You have not received any offers.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Textbook</th>
+                    <th>Buyer</th>
+                    <th>Offer</th>
+                    <th>Message</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var offer in receivedOffers)
+                {
+                    <tr>
+                        <td>@offer.Textbook?.Book_Name</td>
+                        <td>@offer.Buyer?.Email</td>
+                        <td>R @offer.OfferPrice.ToString("0.00")</td>
+                        <td>@offer.Message</td>
+                        <td>@offer.Status</td>
+                        <td>
+                            @if (offer.Status == "Pending")
+                            {
+                                <button class="btn btn-success btn-sm me-2"
+                                        @onclick="() => AcceptOffer(offer.Id)">
+                                    Accept
+                                </button>
+
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => RejectOffer(offer.Id)">
+                                    Reject
+                                </button>
+                            }
+                            else
+                            {
+                                <span>No action required</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h2 class="h4 mt-5">Offers I Sent</h2>
+
+@if (sentOffers.Count == 0)
+{
+    <div class="alert alert-info">
+        You have not made any offers.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Textbook</th>
+                    <th>Original price</th>
+                    <th>My offer</th>
+                    <th>Message</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var offer in sentOffers)
+                {
+                    <tr>
+                        <td>@offer.Textbook?.Book_Name</td>
+
+                        <td>
+                            R @(offer.Textbook?.Price.ToString("0.00") ?? "0.00")
+                        </td>
+
+                        <td>R @offer.OfferPrice.ToString("0.00")</td>
+                        <td>@offer.Message</td>
+                        <td>@offer.Status</td>
+                        <td>@offer.CreatedAt.ToString("dd MMM yyyy")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<Offer> receivedOffers = new();
+    private List<Offer> sentOffers = new();
+
+    private string currentUserId = "";
+    private string successMessage = "";
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticationState =
+            await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        var currentUser =
+            await UserManager.GetUserAsync(authenticationState.User);
+
+        if (currentUser == null)
+        {
+            errorMessage = "You must log in to view offers.";
+            return;
+        }
+
+        currentUserId = currentUser.Id;
+
+        await LoadOffers();
+    }
+
+    private async Task LoadOffers()
+    {
+        sentOffers = await db.Offers
+            .Include(offer => offer.Textbook)
+            .Where(offer => offer.BuyerId == currentUserId)
+            .OrderByDescending(offer => offer.CreatedAt)
+            .ToListAsync();
+
+        receivedOffers = await db.Offers
+            .Include(offer => offer.Textbook)
+            .Include(offer => offer.Buyer)
+            .Where(offer =>
+                offer.Textbook != null &&
+                offer.Textbook.SellerId == currentUserId)
+            .OrderByDescending(offer => offer.CreatedAt)
+            .ToListAsync();
+    }
+
+    private async Task AcceptOffer(int offerId)
+    {
+        successMessage = "";
+        errorMessage = "";
+
+        try
+        {
+            var offer = await db.Offers
+                .Include(item => item.Textbook)
+                .FirstOrDefaultAsync(item => item.Id == offerId);
+
+            if (offer == null || offer.Textbook == null)
+            {
+                errorMessage = "The offer could not be found.";
+                return;
+            }
+
+            if (offer.Textbook.SellerId != currentUserId)
+            {
+                errorMessage = "You cannot accept this offer.";
+                return;
+            }
+
+            if (offer.Status != "Pending")
+            {
+                errorMessage = "This offer has already been handled.";
+                return;
+            }
+
+            offer.Status = "Accepted";
+            offer.Textbook.Status = "Reserved";
+
+            var otherOffers = await db.Offers
+                .Where(item =>
+                    item.TextbookId == offer.TextbookId &&
+                    item.Id != offer.Id &&
+                    item.Status == "Pending")
+                .ToListAsync();
+
+            foreach (var otherOffer in otherOffers)
+            {
+                otherOffer.Status = "Rejected";
+            }
+
+            var transaction = new SomaShareApp.Models.Transaction
+            {
+                TextbookId = offer.TextbookId,
+                BuyerId = offer.BuyerId,
+                SellerId = currentUserId,
+                FinalPrice = offer.OfferPrice,
+                PaymentMethod = "Cash on Meetup"
+            };
+
+            db.Transactions.Add(transaction);
+
+            await db.SaveChangesAsync();
+            await LoadOffers();
+
+            successMessage =
+                "The offer was accepted and a transaction was created.";
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.InnerException?.Message
+                ?? exception.Message;
+        }
+    }
+
+    private async Task RejectOffer(int offerId)
+    {
+        successMessage = "";
+        errorMessage = "";
+
+        try
+        {
+            var offer = await db.Offers
+                .Include(item => item.Textbook)
+                .FirstOrDefaultAsync(item => item.Id == offerId);
+
+            if (offer == null || offer.Textbook == null)
+            {
+                errorMessage = "The offer could not be found.";
+                return;
+            }
+
+            if (offer.Textbook.SellerId != currentUserId)
+            {
+                errorMessage = "You cannot reject this offer.";
+                return;
+            }
+
+            if (offer.Status != "Pending")
+            {
+                errorMessage = "This offer has already been handled.";
+                return;
+            }
+
+            offer.Status = "Rejected";
+
+            await db.SaveChangesAsync();
+            await LoadOffers();
+
+            successMessage = "The offer was rejected.";
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.InnerException?.Message
+                ?? exception.Message;
+        }
+    }
+}
